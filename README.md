@@ -8,6 +8,12 @@ This repository is built from the staged OpenCode prompt pack in `prompts/`.
 
 Scan Kite agent wallets, preview signatures, inspect contracts, and coordinate incident response.
 
+## Proof of Work
+
+- Live Vercel deployment: https://kite-security-command-center.vercel.app
+- Public proof report: [docs/PROOF_OF_WORK.md](docs/PROOF_OF_WORK.md)
+- Rendered screenshot: [docs/screenshot.jpg](docs/screenshot.jpg)
+
 ## Core modules
 
 - **Wallet Risk Scanner** — Analyze wallet behavior for suspicious activity and risk factors.
