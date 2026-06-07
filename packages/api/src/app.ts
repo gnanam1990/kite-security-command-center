@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { assertEvmAddress } from "@kite-security-command-center/core";
+import { PreviewRuntime } from "@kite-security-command-center/worker";
+import { getChainStats } from "./chain.js";
 import { activity, approvals, createItem, items, modules } from "./data.js";
 
 export const app = new Hono();
@@ -63,7 +65,42 @@ app.post("/webhooks/:triggerId", async (c) => {
   });
 });
 
-app.get("/safesign", (c) => c.json({ route: "/safesign", product: "KiteSecurity Command Center", preview: true, modules }));
-app.get("/incidents", (c) => c.json({ route: "/incidents", product: "KiteSecurity Command Center", preview: true, modules }));
-app.get("/revoke", (c) => c.json({ route: "/revoke", product: "KiteSecurity Command Center", preview: true, modules }));
-app.get("/settings", (c) => c.json({ route: "/settings", product: "KiteSecurity Command Center", preview: true, modules }));
+// Single product/route metadata endpoint. Replaces the previous per-route stubs,
+// which double-registered routes (dead, shadowed code) and registered an entity
+// "/new" route after "/:id" so it was never reachable.
+app.get("/meta", (c) =>
+  c.json({
+    service: "kite-security-command-center",
+    product: "KiteSecurity Command Center",
+    modules,
+    preview: true,
+  }),
+);
+
+// Real Kite Mainnet read via the connectors package. Degrades to a preview-safe
+// payload (HTTP 200) if chain infrastructure is unreachable, so clients never break.
+app.get("/chain/stats", async (c) => {
+  try {
+    return c.json(await getChainStats());
+  } catch (error) {
+    return c.json({
+      network: "mainnet",
+      chainId: 2366,
+      live: false,
+      preview: true,
+      error: error instanceof Error ? error.message : "chain read failed",
+    });
+  }
+});
+
+// Worker-backed preview run simulation. Exercises the worker runtime.
+app.post("/runs/simulate", (c) => {
+  const item = items[0];
+  if (!item) return c.json({ error: "No items to simulate" }, 404);
+  const runtime = new PreviewRuntime();
+  runtime.enqueue({ item, message: `${item.name} preview run simulated` });
+  return c.json({ event: runtime.tick(), preview: true }, 201);
+});
+
+app.notFound((c) => c.json({ error: "Not found" }, 404));
+app.onError((error, c) => c.json({ error: error instanceof Error ? error.message : "Internal error" }, 500));
