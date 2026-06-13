@@ -35,9 +35,13 @@ await build({
   outfile: `${fnDir}/index.mjs`,
   logLevel: "info",
 });
+// shouldAddHelpers MUST stay false: Vercel's Node body-parsing helpers consume the
+// request stream to populate req.body, but the @hono/node-server Vercel adapter reads
+// the raw IncomingMessage stream itself. With helpers enabled, that stream is already
+// drained, so any handler calling c.req.json() (e.g. POST /scan) hangs and times out.
 writeFileSync(
   `${fnDir}/.vc-config.json`,
-  JSON.stringify({ runtime: "nodejs22.x", handler: "index.mjs", launcherType: "Nodejs", shouldAddHelpers: true }, null, 2),
+  JSON.stringify({ runtime: "nodejs22.x", handler: "index.mjs", launcherType: "Nodejs", shouldAddHelpers: false }, null, 2),
 );
 
 // 4. Routing.
